@@ -228,7 +228,9 @@ app.post('/participateRandom', (req, res) => {
       console.log(commit);
       ReverseAuctionContract.connect(signer).participateRandomAuction(commit, auction, address).then((tx) => {
         tx.wait().then(() => {return res.json({"number": value})});
-      })
+      }).catch((error) => {
+        console.log(error);
+      });
       
     })
   }
