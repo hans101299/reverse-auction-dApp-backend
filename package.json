@@ -1,0 +1,25 @@
+{
+  "name": "reverse-auction-dapp-backend",
+  "version": "1.0.0",
+  "description": "Backend for reverse auction dApp",
+  "type": "module",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.7",
+    "@nomicfoundation/hardhat-toolbox": "^2.0.0",
+    "@nomiclabs/hardhat-etherscan": "^3.1.1",
+    "@openzeppelin/hardhat-upgrades": "^1.21.0",
+    "chai": "^4.3.6",
+    "hardhat": "^2.12.3",
+    "html-webpack-plugin": "^5.5.0",
+    "webpack": "^5.70.0",
+    "webpack-cli": "^4.9.2",
+    "webpack-dev-server": "^4.7.4"
+  },
+  "dependencies": {
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "ipfs-http-client": "^60.0.1"
+  }
+}
