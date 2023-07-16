@@ -203,8 +203,10 @@ app.post('/buyModifier', (req, res) => {
 
   try{
     console.log(address, type, value)
-    ReverseAuctionContract.connect(signer).buyModifier(address, type, value);
-    return res.sendStatus(200);
+    ReverseAuctionContract.connect(signer).buyModifier(address, type, value).then((tx) => {
+      tx.wait().then(() => {return res.sendStatus(200)});
+    });
+    
   }
   catch (error){
     console.log(error)
