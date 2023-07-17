@@ -10,9 +10,9 @@ dotenv.config()
 
 // Set up Ethereum provider and contract
 const provider = new ethers.providers.JsonRpcProvider("https://rpc.ankr.com/eth_goerli");
-const reverseAuctionAddress = '0x7feCb0441B565F5Fbe7484EA23436f7d7Bd1D2d2';
-const nftTicketAddress = "0xC195aD5b8d1521fb7913D25f6dF048DDcAF9fe36";
-const nftModifierAddress = "0xf1FFdA54C75A053fA99bE3375c9034699a56F173";
+const reverseAuctionAddress = '0xB24BE19d6F361a1B0B78941C19a77c9F5dfe8bA3';
+const nftTicketAddress = "0xCd8549bE71D63952c0AEC474B1353B752AcaCC33";
+const nftModifierAddress = "0xef41EFC4269359071525875E0d8794848843a5f1";
 
 const ReverseAuctionContract = new ethers.Contract(reverseAuctionAddress, reverseAuction.abi, provider);
 const NFTModifierContract = new ethers.Contract(nftModifierAddress, nftModifierAuction.abi, provider);
