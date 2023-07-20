@@ -1,4 +1,5 @@
 import express from 'express';
+import Queue from 'p-queue';
 import { ethers } from 'ethers';
 import { create } from 'ipfs-http-client'
 import cors from "cors";
@@ -19,13 +20,20 @@ const NFTModifierContract = new ethers.Contract(nftModifierAddress, nftModifierA
 const NFTTicketContract = new ethers.Contract(nftTicketAddress, nftTicketAuction.abi, provider);
 
 
-const signer = new ethers.Wallet(process.env.ADMIN_ACCOUNT_PRIVATE_KEY, provider);
+// const signer = new ethers.Wallet(process.env.ADMIN_ACCOUNT_PRIVATE_KEY, provider);
+
+const walletAddresses = [
+  process.env.ADMIN_ACCOUNT_PRIVATE_KEY_1,
+  process.env.ADMIN_ACCOUNT_PRIVATE_KEY_2
+];
 
 // Create an Express app
 const app = express();
 
 app.use(express.json());
 app.use(cors());
+
+const requestQueue = new Queue({ concurrency: walletAddresses.length });
 
 
 const projectId = process.env.INFURA_KEY;
@@ -114,14 +122,6 @@ async function uploadMetadata(ticket){
   return myImmutableAddress.path;
 }
 
-// Define the function to be executed when the event occurs
-function handleCreateAuctionEvent(owner,auctionId) {
-  // Execute your desired function here
-  console.log('Create Auction emitted:', owner,auctionId);
-
-  // You can do additional processing or trigger other actions as needed
-}
-
 async function handleCommitEvent(bidder, auctionId, ticketId){
   var ticket = {
     "name": "TICKET#"+ticketId.toString(),
@@ -140,7 +140,50 @@ async function handleCommitEvent(bidder, auctionId, ticketId){
 
   console.log(cid);
 
-  NFTTicketContract.connect(signer).setTokenURI(ticketId,cid);
+  try {
+    let walletAddress = walletAddresses.shift();
+
+    // Loop until a wallet becomes available
+    while (!walletAddress) {
+      // Wait for a short time before retrying (you can adjust the delay as needed)
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      walletAddress = walletAddresses.shift();
+    }
+
+    console.log(walletAddress);
+
+    // Now we have an available wallet address
+
+    // Create a promise to wait for a wallet to process the request.
+    requestQueue.add(async () => {
+      try {
+        // Your existing code to handle the transaction using ethers.js goes here.
+        // Make sure to customize this part according to your specific transaction logic.
+
+        // For example, you might create a new ethers.js wallet with the address.
+        const wallet = new ethers.Wallet(walletAddress, provider);
+
+        // Perform your transaction here, for example, sending Ether.
+        const transaction = await NFTTicketContract.connect(wallet).setTokenURI(ticketId,cid);
+
+        await transaction.wait();
+
+        // Simulate some delay to avoid potential nonce conflicts.
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        // Add the wallet address back to the pool to be reused for the next request.
+        walletAddresses.push(walletAddress);
+
+      } catch (error) {
+        // If there's an error during the transaction, make sure to add the wallet address back to the pool.
+        walletAddresses.push(walletAddress);
+        console.log(error.reason)
+      }
+    });
+
+  } catch (error) {
+    console.log(error.reason)
+  }
 
 }
 
@@ -166,8 +209,49 @@ async function handleBuyModifierEvent(owner, modifierId, type, value){
 
   console.log(cid);
 
-  let tx = await NFTModifierContract.connect(signer).setTokenURI(modifierId,cid);
-  await tx.wait();
+  try {
+    let walletAddress = walletAddresses.shift();
+
+    // Loop until a wallet becomes available
+    while (!walletAddress) {
+      // Wait for a short time before retrying (you can adjust the delay as needed)
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      walletAddress = walletAddresses.shift();
+    }
+
+    console.log(walletAddress);
+    // Now we have an available wallet address
+
+    // Create a promise to wait for a wallet to process the request.
+    requestQueue.add(async () => {
+      try {
+        // Your existing code to handle the transaction using ethers.js goes here.
+        // Make sure to customize this part according to your specific transaction logic.
+
+        // For example, you might create a new ethers.js wallet with the address.
+        const wallet = new ethers.Wallet(walletAddress, provider);
+
+        // Perform your transaction here, for example, sending Ether.
+        const transaction = await NFTModifierContract.connect(wallet).setTokenURI(modifierId,cid);
+
+        await transaction.wait();
+
+        // Simulate some delay to avoid potential nonce conflicts.
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        // Add the wallet address back to the pool to be reused for the next request.
+        walletAddresses.push(walletAddress);
+
+      } catch (error) {
+        // If there's an error during the transaction, make sure to add the wallet address back to the pool.
+        walletAddresses.push(walletAddress);
+        console.log(error.reason)
+      }
+    });
+
+  } catch (error) {
+    console.log(error.reason)
+  }
 
 }
 
@@ -194,27 +278,64 @@ async function handleBuyModifierEvent(owner, modifierId, type, value){
   }
 })();
 
-app.post('/buyModifier', (req, res) => {
+app.post('/buyModifier', async (req, res) => {
   let address = req.body.address;
   let type = generateRandomNumber(optionsType);
   let value = generateRandomNumber(optionsValue);
 
   res.set('Access-Control-Allow-Origin', '*');
 
-  try{
-    console.log(address, type, value)
-    ReverseAuctionContract.connect(signer).buyModifier(address, type, value).then((tx) => {
-      tx.wait().then(() => {return res.sendStatus(200)});
+
+  try {
+    let walletAddress = walletAddresses.shift();
+
+    // Loop until a wallet becomes available
+    while (!walletAddress) {
+      // Wait for a short time before retrying (you can adjust the delay as needed)
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      walletAddress = walletAddresses.shift();
+    }
+    console.log(walletAddress);
+
+    // Now we have an available wallet address
+
+    // Create a promise to wait for a wallet to process the request.
+    requestQueue.add(async () => {
+      try {
+        // Your existing code to handle the transaction using ethers.js goes here.
+        // Make sure to customize this part according to your specific transaction logic.
+
+        // For example, you might create a new ethers.js wallet with the address.
+        const wallet = new ethers.Wallet(walletAddress, provider);
+
+        // Perform your transaction here, for example, sending Ether.
+        const transaction = await ReverseAuctionContract.connect(wallet).buyModifier(address, type, value);
+
+        await transaction.wait();
+
+        // Simulate some delay to avoid potential nonce conflicts.
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        // Add the wallet address back to the pool to be reused for the next request.
+        walletAddresses.push(walletAddress);
+
+        return res.sendStatus(200);
+
+      } catch (error) {
+        // If there's an error during the transaction, make sure to add the wallet address back to the pool.
+        walletAddresses.push(walletAddress);
+        throw error;
+      }
     });
-    
-  }
-  catch (error){
-    console.log(error)
+
+  } catch (error) {
+    console.log(error.reason)
+    return res.sendStatus(500);
   }
 
 })
 
-app.post('/participateRandom', (req, res) => {
+app.post('/participateRandom', async (req, res) => {
   let address = req.body.address;
   let auction = req.body.auction;
   let password = req.body.password;
@@ -222,20 +343,55 @@ app.post('/participateRandom', (req, res) => {
 
   res.set('Access-Control-Allow-Origin', '*');
 
-  try{
+  try {
     console.log(address, auction, password, value)
-    ReverseAuctionContract.createCommitment(value,password).then((commit) => {
-      console.log(commit);
-      ReverseAuctionContract.connect(signer).participateRandomAuction(commit, auction, address).then((tx) => {
-        tx.wait().then(() => {return res.json({"number": value})});
-      }).catch((error) => {
-        console.log(error);
-      });
-      
-    })
-  }
-  catch (error){
-    console.log(error)
+
+    let walletAddress = walletAddresses.shift();
+
+    // Loop until a wallet becomes available
+    while (!walletAddress) {
+      // Wait for a short time before retrying (you can adjust the delay as needed)
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      walletAddress = walletAddresses.shift();
+    }
+    console.log(walletAddress);
+    
+    // Now we have an available wallet address
+
+    // Create a promise to wait for a wallet to process the request.
+    requestQueue.add(async () => {
+      try {
+        // Your existing code to handle the transaction using ethers.js goes here.
+        // Make sure to customize this part according to your specific transaction logic.
+
+        // For example, you might create a new ethers.js wallet with the address.
+        const wallet = new ethers.Wallet(walletAddress, provider);
+
+        const commit = await ReverseAuctionContract.createCommitment(value,password);
+
+        // Perform your transaction here, for example, sending Ether.
+        const transaction = await ReverseAuctionContract.connect(wallet).participateRandomAuction(commit, auction, address);
+
+        await transaction.wait();
+
+        // Simulate some delay to avoid potential nonce conflicts.
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        // Add the wallet address back to the pool to be reused for the next request.
+        walletAddresses.push(walletAddress);
+
+        return res.json({"number": value});
+
+      } catch (error) {
+        // If there's an error during the transaction, make sure to add the wallet address back to the pool.
+        walletAddresses.push(walletAddress);
+        throw error;
+      }
+    });
+
+  } catch (error) {
+    console.log(error.reason)
+    return res.sendStatus(500);
   }
 
 })
